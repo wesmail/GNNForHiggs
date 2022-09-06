@@ -1,0 +1,2 @@
+# GNNForHiggs
+GNN for Higgs
