@@ -41,12 +41,13 @@ class GCN(torch.nn.Module):
         self.conv5 = torch_geometric.nn.GraphConv(h_feat*8, h_feat*16)
         self.lin = torch.nn.Linear(h_feat*16, num_classes)
 
-    def forward(self, x, edge_index, batch):
-        h = self.conv1(x, edge_index)
-        h = self.conv2(h, edge_index)
-        h = self.conv3(h, edge_index)
-        h = self.conv4(h, edge_index)
-        h = self.conv5(h, edge_index)
+    def forward(self, data):
+        x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
+        h = self.conv1(x=x, edge_index=edge_index, edge_weight=edge_attr)
+        h = self.conv2(x=h, edge_index=edge_index, edge_weight=edge_attr)
+        h = self.conv3(x=h, edge_index=edge_index, edge_weight=edge_attr)
+        h = self.conv4(x=h, edge_index=edge_index, edge_weight=edge_attr)
+        h = self.conv5(x=h, edge_index=edge_index, edge_weight=edge_attr)
 
         out = torch_geometric.nn.global_add_pool(h, batch)
         out = self.lin(out)
