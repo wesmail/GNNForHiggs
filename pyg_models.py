@@ -19,14 +19,15 @@ class GINModel(torch.nn.Module):
 
 
 class EdgeConv(torch.nn.Module):
-    def __init__(self, in_feat=7, h_feat=128, num_classes=2, dropout=0.2):
+    def __init__(self, in_feat=7, h_feat=64, num_classes=2, dropout=0.5):
         super().__init__()
 
         self.gnn = torch_geometric.nn.EdgeCNN(in_feat, h_feat, 3, dropout=dropout, jk='cat', norm="BatchNorm")
         self.classifier = torch_geometric.nn.MLP([h_feat, h_feat*2, num_classes], norm="batch_norm", dropout=dropout)
 
-    def forward(self, x, edge_index, batch):
-        x = self.gnn(x, edge_index)
+    def forward(self, data):
+        x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
+        x = self.gnn(x=x, edge_index=edge_index, edge_weight=edge_attr)
         x = torch_geometric.nn.global_add_pool(x, batch)
         x = self.classifier(x)
         return x
