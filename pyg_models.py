@@ -54,3 +54,32 @@ class GCN(torch.nn.Module):
         out = torch_geometric.nn.global_add_pool(h, batch)
         out = self.lin(out)
         return out      
+
+    
+class ResGCN(torch.nn.Module):
+def __init__(self,  in_feat=7, h_feat=128, num_classes=2, num_layers=5, dropout=0.1):
+    super().__init__()
+
+    self.node_encoder = torch.nn.Linear(in_feat, h_feat)
+
+    self.layers = torch.nn.ModuleList()
+    for i in range(1, num_layers + 1):
+        conv = torch_geometric.nn.GENConv(
+            h_feat, h_feat, aggr='softmax', t=1.0, learn_t=True, num_layers=2, norm='layer')
+        norm = torch.nn.LayerNorm(h_feat, elementwise_affine=True)
+        act = torch.nn.ReLU(inplace=True)
+
+        layer = torch_geometric.nn.DeepGCNLayer(
+            conv, norm, act, block='res+', dropout=dropout, ckpt_grad=i % 3)
+        self.layers.append(layer)
+
+    self.classifier = torch.nn.Linear(h_feat, num_classes)
+    
+def forward(self, data):
+    x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
+    x = self.node_encoder(x=x, edge_index=edge_index, edge_weight=edge_attr)
+    for layer in self.layers:
+        x = layer(x=x, edge_index=edge_index, edge_weight=edge_attr)
+
+    x = torch_geometric.nn.global_add_pool(x, batch)
+    return self.classifier(x)    
