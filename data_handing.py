@@ -110,7 +110,7 @@ class HiggsPyGDataset(torch_geometric.data.InMemoryDataset):
 
         x = torch.tensor(x, dtype=torch.float32)
         y = torch.tensor(np.unique(graph['label']).item(), dtype=torch.int64)
-        g = PyGData.Data(x=x, y=y, edge_index=hitEdges[0], edge_attr=hitEdges[1])
+        g = PyGData.Data(x=x, y=y, edge_index=hitEdges[0], edge_attr=hitEdges[1].float())
         
         return {"graphs": g, "labels": y}
 
