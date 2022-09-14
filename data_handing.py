@@ -2,6 +2,8 @@
 from re import S
 import numpy as np
 import pandas as pd
+import scipy
+import sklearn.preprocessing as sklp
 
 # torch imports
 import torch
@@ -9,6 +11,9 @@ import torch
 # dgl imports
 import dgl
 from torch_cluster import knn_graph
+
+# pyg
+import torch_geometric
 
 
 class HiggsGnnDataset(dgl.data.DGLDataset):
@@ -36,16 +41,28 @@ class HiggsGnnDataset(dgl.data.DGLDataset):
     def __getitem__(self, item):
         graph = self.graphs[item]
         n_nodes = graph.shape[0]
-        # edge index
+        # edge index (use complete graph without edge weighting)
         self.load_edges(n_nodes)
         # node features
         x = graph[['I1', 'I2', 'I3', 'I4', 'Pt', 'E', 'M']].to_numpy()
+
+        # edge index and edge attributes
+        # compute pair-wise distance matrix from (eta, phi)
+        hitPosMatrix = graph[['Eta', 'Phi']].to_numpy()
+        hitDistMatrix = scipy.spatial.distance_matrix(
+            hitPosMatrix, hitPosMatrix)
+        norm_hitDistMatrix = sklp.normalize(hitDistMatrix)
+        norm_sparse_hitDistMatrix = scipy.sparse.csr_matrix(norm_hitDistMatrix)
+        hitEdges = torch_geometric.utils.convert.from_scipy_sparse_matrix(
+            norm_sparse_hitDistMatrix)
+
         x = torch.tensor(x, dtype=torch.float32)
         y = torch.tensor(np.unique(graph['label']).item(), dtype=torch.int64)
 
-        src, dst = self.edge_index[0], self.edge_index[1]
+        src, dst = hitEdges[0][0],  hitEdges[0][1]
         g = dgl.graph((src, dst), num_nodes=n_nodes)
         g.ndata['x'] = x
+        g.edata['e'] = hitEdges[1].float()
 
         return {"graphs": g, "labels": y}
 
